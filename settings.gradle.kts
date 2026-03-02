@@ -16,9 +16,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://s01.oss.sonatype.org/content/repositories/releases/") }
     }
 }
 
-rootProject.name = "mini-map-android"
-include(":app")
- 
+rootProject.name = "expofp-sdk-android-examples"
+include(":mini-map")

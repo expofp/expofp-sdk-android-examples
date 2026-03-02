@@ -1,4 +1,4 @@
-package com.expofp.mini_map_android.ui.theme
+package com.expofp.minimap.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

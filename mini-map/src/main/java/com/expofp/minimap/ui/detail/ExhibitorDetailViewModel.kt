@@ -19,9 +19,7 @@ import javax.inject.Inject
 data class ExhibitorDetailUiState(
     val exhibitorName: String = "",
     val boothName: String? = null,
-    val isMapExpanded: Boolean = false,
-    val isDirectionsActive: Boolean = false,
-    val pendingDirections: Boolean = false
+    val isMapExpanded: Boolean = false
 )
 
 @HiltViewModel
@@ -35,15 +33,13 @@ class ExhibitorDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ExhibitorDetailUiState(exhibitorName = exhibitorName))
     val uiState: StateFlow<ExhibitorDetailUiState> = _uiState.asStateFlow()
 
-    val presenter: StateFlow<IExpoFpPlanPresenter?> = planManager.presenter
+    val miniMapPresenter: IExpoFpPlanPresenter? get() = planManager.miniMapPresenter
+    val fullMapPresenter: IExpoFpPlanPresenter? get() = planManager.fullMapPresenter
 
     init {
         resolveBoothName()
     }
 
-    // Resolves the exhibitor name to a booth name used by the SDK for selection and routing.
-    // If any step fails, the detail screen still works —
-    // just without booth highlighting and directions.
     private fun resolveBoothName() {
         viewModelScope.launch {
             val exhibitors = planManager.getExhibitors().getOrNull() ?: return@launch
@@ -53,83 +49,56 @@ class ExhibitorDetailViewModel @Inject constructor(
             val booths = planManager.getBooths().getOrNull() ?: return@launch
             val booth = booths.find { it.id == firstBoothId } ?: return@launch
 
-            // selectBooth() accepts either name or externalId.
-            // Use externalId (stable system ID) when available; fall back to display name.
             val name = booth.externalId.ifEmpty { booth.name }
             _uiState.update { it.copy(boothName = name) }
-            // Highlight the booth on the plan
-            planManager.presenter.value?.selectBooth(name)
         }
     }
 
     fun onScreenEnter() {
-        val presenter = planManager.presenter.value ?: return
-        presenter.setElementsVisibility(PlanManager.HIDDEN_ELEMENTS)
-        presenter.fitBounds()
+        forBothPresenters { presenter ->
+            presenter.selectExhibitor(exhibitorName)
+            presenter.fitBounds()
+        }
     }
 
-    // Clear all selections and reset the plan view when leaving the screen.
-    // This ensures a clean state for the next exhibitor detail.
     fun onScreenExit() {
-        val presenter = planManager.presenter.value ?: return
-        presenter.selectBooth("")
-        presenter.selectRoute(emptyList())
-        // Reset zoom to show the entire plan
-        presenter.fitBounds()
+        planManager.miniMapPresenter?.selectExhibitor()
+        planManager.miniMapPresenter?.fitBounds()
     }
 
     fun toggleMapExpanded() {
         val currentState = _uiState.value
-        val presenter = planManager.presenter.value ?: return
 
         if (currentState.isMapExpanded) {
-            // Collapsing: clear route if active, re-select booth, reset zoom
-            if (currentState.isDirectionsActive) {
-                presenter.selectRoute(emptyList())
-            }
-            currentState.boothName?.let { presenter.selectBooth(it) }
-            presenter.fitBounds()
-            _uiState.update { it.copy(isMapExpanded = false, isDirectionsActive = false) }
+            _uiState.update { it.copy(isMapExpanded = false) }
         } else {
-            presenter.setElementsVisibility(PlanManager.HIDDEN_ELEMENTS)
-            currentState.boothName?.let { presenter.selectBooth(it) }
+            planManager.fullMapPresenter?.selectExhibitor(exhibitorName)
             _uiState.update { it.copy(isMapExpanded = true) }
         }
     }
 
-    fun toggleDirections() {
+    fun onCollapseAnimationFinished() {
+        val presenter = planManager.fullMapPresenter ?: return
+        presenter.selectRoute(emptyList())
+        presenter.selectExhibitor(exhibitorName)
+    }
+
+    fun showDirections() {
         val boothName = _uiState.value.boothName ?: return
-        val presenter = planManager.presenter.value ?: return
-        val currentState = _uiState.value
-
-        if (currentState.isDirectionsActive) {
-            // Clear route and re-select booth to show just the highlight
-            presenter.selectRoute(emptyList())
-            presenter.selectBooth(boothName)
-            _uiState.update { it.copy(isDirectionsActive = false) }
-        } else {
-            // Build a route from the entrance to the selected booth
-            presenter.selectRoute(
-                from = ExpoFpRouteWaypoint.Booth(PlanManager.ENTRANCE_BOOTH),
-                to = ExpoFpRouteWaypoint.Booth(boothName)
-            )
-            _uiState.update { it.copy(isDirectionsActive = true) }
-        }
+        val presenter = planManager.fullMapPresenter ?: return
+        presenter.selectRoute(
+            from = ExpoFpRouteWaypoint.Booth(PlanManager.ENTRANCE_BOOTH),
+            to = ExpoFpRouteWaypoint.Booth(boothName)
+        )
     }
 
-    // Expands the map and defers directions until the expand animation completes.
-    // We set pendingDirections = true; the Screen calls consumePendingDirections()
-    // after the animation finishes so selectRoute() runs on the full-size viewport.
     fun expandWithDirections() {
-        val presenter = planManager.presenter.value ?: return
-        presenter.setElementsVisibility(PlanManager.HIDDEN_ELEMENTS)
-        _uiState.update { it.copy(isMapExpanded = true, pendingDirections = true) }
+        _uiState.update { it.copy(isMapExpanded = true) }
+        showDirections()
     }
 
-    fun consumePendingDirections() {
-        if (_uiState.value.pendingDirections) {
-            _uiState.update { it.copy(pendingDirections = false) }
-            toggleDirections()
-        }
+    private fun forBothPresenters(action: (IExpoFpPlanPresenter) -> Unit) {
+        planManager.miniMapPresenter?.let(action)
+        planManager.fullMapPresenter?.let(action)
     }
 }

@@ -1,6 +1,7 @@
 package com.expofp.minimap
 
 import android.os.Bundle
+import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,10 +20,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        // Start plan preloading early so it downloads while the UI is being set up.
-        // The SDK must be initialized before this (see MiniMapApplication).
-        planManager.preloadPlan()
+        preAttachWebViews()
 
         setContent {
             MiniMapTheme {
@@ -31,12 +29,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        // Dispose only when the activity is finishing (not on config changes).
-        // Preloaded plans require explicit cleanup — the SDK won't do it automatically.
-        if (isFinishing) {
-            planManager.dispose()
+    private fun preAttachWebViews() {
+        val container = findViewById<ViewGroup>(android.R.id.content)
+        listOf(planManager.miniMapPresenter, planManager.fullMapPresenter).forEach { presenter ->
+            presenter?.getView()?.let { view ->
+                view.alpha = 0f
+                container.addView(view, 0)
+            }
         }
     }
 }

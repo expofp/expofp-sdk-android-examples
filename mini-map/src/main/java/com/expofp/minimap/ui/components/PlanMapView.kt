@@ -15,9 +15,8 @@ fun PlanMapView(
     AndroidView(
         factory = { context ->
             val planView = presenter.getView()
-            // The SDK returns the same View instance for the same presenter.
-            // A View can only have one parent, so detach it from any previous parent first.
             (planView.parent as? ViewGroup)?.removeView(planView)
+            planView.alpha = 1f
             FrameLayout(context).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
@@ -26,8 +25,6 @@ fun PlanMapView(
                 addView(planView)
             }
         },
-        // Detach the SDK view when this composable leaves composition,
-        // so it can be re-attached elsewhere if needed.
         onRelease = { it.removeAllViews() },
         modifier = modifier
     )

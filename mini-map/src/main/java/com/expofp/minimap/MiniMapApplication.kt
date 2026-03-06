@@ -6,6 +6,7 @@ import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class MiniMapApplication : Application() {
+
     override fun onCreate() {
         super.onCreate()
         ExpoFpPlan.initialize(this)

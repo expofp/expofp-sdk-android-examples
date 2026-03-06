@@ -31,15 +31,14 @@ class ExhibitorListViewModel @Inject constructor(
     val uiState: StateFlow<ExhibitorListUiState> = _uiState.asStateFlow()
 
     init {
+        planManager.createPresenters()
         observePlanStatus()
     }
 
-    // Observes the preloaded plan lifecycle: Loading → Initialization → Ready (or Error).
-    // The presenter can only be obtained after the plan reaches Ready status.
     private fun observePlanStatus() {
         viewModelScope.launch {
-            val statusFlow = planManager.getPlanStatusFlow() ?: run {
-                _uiState.update { it.copy(isLoading = false, error = "Plan not preloaded") }
+            val statusFlow = planManager.getMiniMapStatusFlow() ?: run {
+                _uiState.update { it.copy(isLoading = false, error = "Presenters not created") }
                 return@launch
             }
 
@@ -54,7 +53,8 @@ class ExhibitorListViewModel @Inject constructor(
                         _uiState.update { it.copy(isLoading = true) }
                     }
                     is ExpoFpPlanStatus.Ready -> {
-                        planManager.obtainPresenter()
+                        planManager.miniMapPresenter?.setElementsVisibility(PlanManager.HIDDEN_ELEMENTS)
+                        planManager.fullMapPresenter?.setElementsVisibility(PlanManager.HIDDEN_ELEMENTS)
                         loadExhibitors()
                     }
                     is ExpoFpPlanStatus.Error -> {

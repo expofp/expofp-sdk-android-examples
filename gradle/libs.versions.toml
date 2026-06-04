@@ -34,7 +34,7 @@ hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigation" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
-expofp-fplan = { group = "com.expofp", name = "fplan", version = "5.3.4" }
+expofp-fplan = { group = "com.expofp", name = "fplan", version = "5.5.1" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -1,7 +1,5 @@
 package com.expofp.minimap.ui.components
 
-import android.view.ViewGroup
-import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
@@ -13,19 +11,9 @@ fun PlanMapView(
     modifier: Modifier = Modifier
 ) {
     AndroidView(
-        factory = { context ->
-            val planView = presenter.getView()
-            (planView.parent as? ViewGroup)?.removeView(planView)
-            planView.alpha = 1f
-            FrameLayout(context).apply {
-                layoutParams = FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT
-                )
-                addView(planView)
-            }
-        },
-        onRelease = { it.removeAllViews() },
+        // getView() returns a self-sizing container and detaches from any previous parent,
+        // so it can be hosted directly. alpha = 1f undoes the pre-warm alpha = 0f set elsewhere.
+        factory = { presenter.getView().apply { alpha = 1f } },
         modifier = modifier
     )
 }
